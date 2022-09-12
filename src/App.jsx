@@ -18,7 +18,7 @@ function App() {
   const [actualIndex, setActualIndex] = useState(-1)
   const [copyItems, setCopyItems] = useState([])
 
-  
+
 
   useDocumentTitle(copyItems[actualIndex]?.title, 'note')
 
