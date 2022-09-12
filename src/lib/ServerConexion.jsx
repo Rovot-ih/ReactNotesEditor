@@ -1,4 +1,4 @@
-export async function put() {
+export async function put(url,data) {
     const response = await fetch(url, {
         method: 'put',
         headers: { 'content-type': 'application/json' },

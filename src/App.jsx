@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 import Item from './components/Item';
 import Menu from './components/Menu';
@@ -10,22 +10,41 @@ import Preview from './components/Preview';
 import uuid from 'react-uuid';
 import useDocumentTitle from './Hooks/useDocumentTitle';
 import itemsContext from './Context/ItemsContext';
-import {get,post,put} from './lib';
+import { get, post, put } from './lib/ServerConexion';
+import StatusContext from './Context/StatusContext';
+
+
 
 function App() {
 
   const [items, setItems] = useState([])
   const [actualIndex, setActualIndex] = useState(-1)
   const [copyItems, setCopyItems] = useState([])
-
+  const URL = 'http://localhost:3010/'
+  const [lock, setLock] = useState(false)
+  const [status, setStatus] = useState(0)
 
 
   useDocumentTitle(copyItems[actualIndex]?.title, 'note')
 
-  function handleNew() {
+  useEffect(() => {
+    getItems();
+  }, [])
+
+  async function getItems() {
+    let data = await get(`${URL}`)
+    let res = getOrderedNotes(data)
+
+    setItems(res)
+    setCopyItems(res)
+
+    if (items.length > 0) setActualIndex(0)
+  }
+
+  async function handleNew() {
     const note = {
       id: uuid(),
-      title: 'Title',
+      title: 'Nuevo',
       text: ' Lorem ipsum dolor sit amet.',
       pinned: false,
       created: Date.now()
@@ -37,6 +56,8 @@ function App() {
 
     setItems(res)
     setCopyItems(res)
+
+    const data = await post(`${URL}new`, note)
   }
 
   function handleSelectNote(item, e) {
@@ -94,10 +115,36 @@ function App() {
     setCopyItems(notes)
   }
 
+
+  function autoSave() {
+    if (!lock) {
+      setLock(true)
+      setStatus(1)
+      setTimeout(() => {
+        save()
+        setLock(false)
+      }, 3000);
+    }
+  }
+
+  async function save() {
+    const item = items[actualIndex]
+    const response = await put(`${URL}update`, item)
+    
+    setStatus(2)
+
+    setTimeout(() => {
+      setStatus(0)
+    }, 1000);
+
+  }
+
   function renderEditorAndPreviewUI() {
     return (
       <>
-        <Editor item={copyItems[actualIndex]} onChangeTitle={onChangeTitle} onChangeText={onChangeText} />
+        <StatusContext.Provider value={{ status: status, autoSave: autoSave }}>
+          <Editor item={copyItems[actualIndex]} onChangeTitle={onChangeTitle} onChangeText={onChangeText} />
+        </StatusContext.Provider>
         <Preview text={copyItems[actualIndex].text} title={copyItems[actualIndex].title} />
       </>
     )
@@ -126,8 +173,8 @@ function App() {
   return (
     <div className="App container">
       <Panel>
-        <itemsContext.Provider value={{onSearch:handleSearch, onNew:handleNew}} >
-          <Menu  />
+        <itemsContext.Provider value={{ onSearch: handleSearch, onNew: handleNew }} >
+          <Menu />
         </itemsContext.Provider>
 
 
